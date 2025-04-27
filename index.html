@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preventivo Pulizie</title>
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f9f9f9; }
+    h1 { text-align: center; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+    th { background-color: #4CAF50; color: white; }
+    input[type=number], input[type=text] { width: 70px; padding: 6px; border-radius: 6px; border: 1px solid #ccc; }
+    .total { margin-top: 20px; font-size: 24px; text-align: center; }
+    .buttons { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+    button { padding: 15px; font-size: 18px; border: none; border-radius: 8px; cursor: pointer; }
+    .btn-calc { background-color: #2196F3; color: white; }
+    .btn-save { background-color: #4CAF50; color: white; }
+    .btn-reset { background-color: #f44336; color: white; }
+    .btn-email { background-color: #ff9800; color: white; }
+    b { font-weight: bold; }
+  </style>
+  <script>
+	  if ('serviceWorker' in navigator) {
+		window.addEventListener('load', () => {
+		  navigator.serviceWorker.register('/service-worker.js')
+			.then((registration) => {
+			  console.log('Service Worker registrato con successo:', registration);
+			})
+			.catch((error) => {
+			  console.log('Errore nella registrazione del Service Worker:', error);
+			});
+		});
+	  }
+	</script>
+</head>
+<body>
+  <h1>Preventivo Pulizie</h1>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Voce</th>
+        <th>Descrizione</th>
+        <th>Prezzo Unitario (&euro;)</th>
+        <th>Quantità</th>
+      </tr>
+    </thead>
+    <tbody id="items">
+      <!-- Voci generate da JavaScript -->
+    </tbody>
+  </table>
+
+  <div class="total" id="total">Totale: &euro; 0.00</div>
+
+  <div class="buttons">
+    <button class="btn-calc" onclick="calcolaTotale()">Calcola Totale</button>
+    <button class="btn-save" onclick="salvaPreventivo()">Salva Preventivo (PDF)</button>
+    <button class="btn-reset" onclick="resetForm()">Azzerare Tutto</button>
+  </div>
+
+  <script>
+    const voci = [
+      { nome: "<b>Finestre</b>", descrizione: "Pulizia completa (vetri, infissi, eventuale resina o adesivi)", prezzo: 30 },
+      { nome: "<b>Porte</b>", descrizione: "Pulizia porte interne o blindate", prezzo: 17 },
+      { nome: "<b>Bagno</b>", descrizione: "Pulizia completa (sanitari, piastrelle, box doccia, calcare)", prezzo: 30 },
+      { nome: "<b>Cucina</b>", descrizione: "Pulizia profonda (mobili, elettrodomestici, piastrelle)", prezzo: 35 },
+      { nome: "<b>Pavimenti</b>", descrizione: "Lavaggio e trattamento base - 4€/mq", prezzo: 4 },
+      { nome: "<b>Extra</b>", descrizione: "Rimozione resina, silicone o adesivi", prezzo: null },
+      { nome: "<b>Extra</b>", descrizione: "Guano piccioni / terrazzi molto sporchi", prezzo: null },
+      { nome: "<b>Extra</b>", descrizione: "Cantine / garage con rifiuti ingombranti", prezzo: 40 },
+      { nome: "<b>Extra personalizzato</b>", descrizione: "Extra personalizzato", prezzo: null, personalizzato: true }
+    ];
+
+    const tbody = document.getElementById('items');
+
+    voci.forEach((voce, index) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${voce.personalizzato ? `<input type="text" id="nome-${index}" placeholder="Nome">` : voce.nome}</td>
+        <td>${voce.personalizzato ? `<input type="text" id="descrizione-${index}" placeholder="Descrizione">` : voce.descrizione}</td>
+        <td>
+          ${voce.prezzo !== null ? `${voce.prezzo.toFixed(2)}` : `<input type="text" id="prezzo-${index}" placeholder="€">`}
+        </td>
+        <td><input type="number" min="0" id="qta-${index}" value="0"></td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    function calcolaTotale() {
+      let totale = 0;
+      voci.forEach((voce, index) => {
+        const quantita = parseInt(document.getElementById(`qta-${index}`).value) || 0;
+        let prezzo = voce.prezzo;
+        if (prezzo === null) {
+          prezzo = parseFloat(document.getElementById(`prezzo-${index}`).value.replace(',', '.')) || 0;
+        }
+        totale += prezzo * quantita;
+      });
+      document.getElementById('total').innerHTML = `Totale: &euro; ${totale.toFixed(2)}`;
+    }
+
+    function salvaPreventivo() {
+      salvaPDF();
+    }
+
+	function getDataOra() {
+	  const now = new Date();
+	  const yyyy = now.getFullYear();
+	  const mm = String(now.getMonth() + 1).padStart(2, '0');
+	  const dd = String(now.getDate()).padStart(2, '0');
+	  const hh = String(now.getHours()).padStart(2, '0');
+	  const mi = String(now.getMinutes()).padStart(2, '0');
+	  return `${yyyy}-${mm}-${dd}_${hh}-${mi}`;
+	}
+
+	function salvaPDF() {
+	  const { jsPDF } = window.jspdf;
+	  const doc = new jsPDF();
+	  
+	  doc.setFontSize(22);
+	  doc.text("Preventivo Pulizie", 105, 20, null, null, 'center');
+	  
+	  doc.setFontSize(14);
+	  let y = 35;
+	  
+	  voci.forEach((voce, index) => {
+		const quantita = parseInt(document.getElementById(`qta-${index}`).value) || 0;
+		if (quantita > 0) {
+		  let prezzo = voce.prezzo;
+		  let nomeVoce = voce.nome.replace(/<[^>]*>?/gm, '');
+		  let descrizioneVoce = voce.descrizione;
+
+		  if (voce.personalizzato) {
+			nomeVoce = document.getElementById(`nome-${index}`).value || "Extra personalizzato";
+			descrizioneVoce = document.getElementById(`descrizione-${index}`).value || "";
+		  }
+
+		  if (prezzo === null) {
+			prezzo = parseFloat(document.getElementById(`prezzo-${index}`).value.replace(',', '.')) || 0;
+		  }
+
+		  const totaleRiga = prezzo * quantita;
+
+		  // Voce in grassetto
+		  doc.setFont(undefined, 'bold');
+		  doc.text(nomeVoce, 10, y);
+		  y += 6;
+
+		  // Descrizione normale
+		  doc.setFont(undefined, 'normal');
+		  doc.setTextColor(100);
+		  doc.text(descrizioneVoce, 10, y);
+		  doc.setTextColor(0);
+		  y += 6;
+
+		  // Quantità e Prezzo
+		  doc.text(`Quantità: ${quantita} x ${prezzo.toFixed(2)}€ = ${totaleRiga.toFixed(2)}€`, 10, y);
+		  y += 12;
+
+		  // Se va oltre il fondo pagina, nuova pagina
+		  if (y > 270) {
+			doc.addPage();
+			y = 20;
+		  }
+		}
+	  });
+
+	  // Totale finale
+	  y += 10;
+	  doc.setFont(undefined, 'bold');
+	  const totaleText = document.getElementById('total').innerText;
+	  doc.text(totaleText, 10, y);
+
+	  doc.save(`preventivo_${getDataOra()}.pdf`);
+	}
+
+
+
+    function resetForm() {
+      voci.forEach((voce, index) => {
+        document.getElementById(`qta-${index}`).value = 0;
+        if (voce.prezzo === null) {
+          document.getElementById(`prezzo-${index}`).value = '';
+        }
+        if (voce.personalizzato) {
+          document.getElementById(`testo-${index}`).value = '';
+        }
+      });
+      document.getElementById('total').innerHTML = "Totale: &euro; 0.00";
+    }
+  </script>
+</body>
+</html>
