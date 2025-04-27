@@ -7,34 +7,117 @@
   <link rel="manifest" href="manifest.json">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f9f9f9; }
-    h1 { text-align: center; margin-bottom: 20px; }
-    table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; }
-    th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
-    th { background-color: #4CAF50; color: white; }
-    input[type=number], input[type=text] { width: 70px; padding: 6px; border-radius: 6px; border: 1px solid #ccc; }
-    .total { margin-top: 20px; font-size: 24px; text-align: center; }
-    .buttons { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
-    button { padding: 15px; font-size: 18px; border: none; border-radius: 8px; cursor: pointer; }
+    /* Generale */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 20px;
+      background-color: #f9f9f9;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 1.5em;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: center;
+    }
+    th {
+      background-color: #4CAF50;
+      color: white;
+    }
+    input[type=number], input[type=text] {
+      width: 100%;
+      max-width: 70px;
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    .total {
+      margin-top: 20px;
+      font-size: 1.2em;
+      text-align: center;
+    }
+    .buttons {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    button {
+      padding: 12px;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
     .btn-calc { background-color: #2196F3; color: white; }
     .btn-save { background-color: #4CAF50; color: white; }
     .btn-reset { background-color: #f44336; color: white; }
     .btn-email { background-color: #ff9800; color: white; }
     b { font-weight: bold; }
+
+    /* Media Queries per Mobile/Tablet */
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 1.2em;
+      }
+      table th, table td {
+        font-size: 0.9em;
+      }
+      .buttons {
+        flex-direction: column;
+      }
+      button {
+        padding: 10px;
+        font-size: 1em;
+      }
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.1em;
+      }
+      table {
+        font-size: 0.8em;
+      }
+      .buttons {
+        gap: 8px;
+      }
+      button {
+        padding: 8px;
+        font-size: 0.9em;
+      }
+      input[type=number], input[type=text] {
+        width: 100%;
+      }
+    }
+
   </style>
   <script>
-	  if ('serviceWorker' in navigator) {
-		window.addEventListener('load', () => {
-		  navigator.serviceWorker.register('/service-worker.js')
-			.then((registration) => {
-			  console.log('Service Worker registrato con successo:', registration);
-			})
-			.catch((error) => {
-			  console.log('Errore nella registrazione del Service Worker:', error);
-			});
-		});
-	  }
-	</script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then((registration) => {
+            console.log('Service Worker registrato con successo:', registration);
+          })
+          .catch((error) => {
+            console.log('Errore nella registrazione del Service Worker:', error);
+          });
+      });
+    }
+  </script>
 </head>
 <body>
   <h1>Preventivo Pulizie</h1>
@@ -106,78 +189,76 @@
       salvaPDF();
     }
 
-	function getDataOra() {
-	  const now = new Date();
-	  const yyyy = now.getFullYear();
-	  const mm = String(now.getMonth() + 1).padStart(2, '0');
-	  const dd = String(now.getDate()).padStart(2, '0');
-	  const hh = String(now.getHours()).padStart(2, '0');
-	  const mi = String(now.getMinutes()).padStart(2, '0');
-	  return `${yyyy}-${mm}-${dd}_${hh}-${mi}`;
-	}
+    function getDataOra() {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mi = String(now.getMinutes()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}_${hh}-${mi}`;
+    }
 
-	function salvaPDF() {
-	  const { jsPDF } = window.jspdf;
-	  const doc = new jsPDF();
-	  
-	  doc.setFontSize(22);
-	  doc.text("Preventivo Pulizie", 105, 20, null, null, 'center');
-	  
-	  doc.setFontSize(14);
-	  let y = 35;
-	  
-	  voci.forEach((voce, index) => {
-		const quantita = parseInt(document.getElementById(`qta-${index}`).value) || 0;
-		if (quantita > 0) {
-		  let prezzo = voce.prezzo;
-		  let nomeVoce = voce.nome.replace(/<[^>]*>?/gm, '');
-		  let descrizioneVoce = voce.descrizione;
+    function salvaPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      
+      doc.setFontSize(22);
+      doc.text("Preventivo Pulizie", 105, 20, null, null, 'center');
+      
+      doc.setFontSize(14);
+      let y = 35;
+      
+      voci.forEach((voce, index) => {
+        const quantita = parseInt(document.getElementById(`qta-${index}`).value) || 0;
+        if (quantita > 0) {
+          let prezzo = voce.prezzo;
+          let nomeVoce = voce.nome.replace(/<[^>]*>?/gm, '');
+          let descrizioneVoce = voce.descrizione;
 
-		  if (voce.personalizzato) {
-			nomeVoce = document.getElementById(`nome-${index}`).value || "Extra personalizzato";
-			descrizioneVoce = document.getElementById(`descrizione-${index}`).value || "";
-		  }
+          if (voce.personalizzato) {
+            nomeVoce = document.getElementById(`nome-${index}`).value || "Extra personalizzato";
+            descrizioneVoce = document.getElementById(`descrizione-${index}`).value || "";
+          }
 
-		  if (prezzo === null) {
-			prezzo = parseFloat(document.getElementById(`prezzo-${index}`).value.replace(',', '.')) || 0;
-		  }
+          if (prezzo === null) {
+            prezzo = parseFloat(document.getElementById(`prezzo-${index}`).value.replace(',', '.')) || 0;
+          }
 
-		  const totaleRiga = prezzo * quantita;
+          const totaleRiga = prezzo * quantita;
 
-		  // Voce in grassetto
-		  doc.setFont(undefined, 'bold');
-		  doc.text(nomeVoce, 10, y);
-		  y += 6;
+          // Voce in grassetto
+          doc.setFont(undefined, 'bold');
+          doc.text(nomeVoce, 10, y);
+          y += 6;
 
-		  // Descrizione normale
-		  doc.setFont(undefined, 'normal');
-		  doc.setTextColor(100);
-		  doc.text(descrizioneVoce, 10, y);
-		  doc.setTextColor(0);
-		  y += 6;
+          // Descrizione normale
+          doc.setFont(undefined, 'normal');
+          doc.setTextColor(100);
+          doc.text(descrizioneVoce, 10, y);
+          doc.setTextColor(0);
+          y += 6;
 
-		  // Quantità e Prezzo
-		  doc.text(`Quantità: ${quantita} x ${prezzo.toFixed(2)}€ = ${totaleRiga.toFixed(2)}€`, 10, y);
-		  y += 12;
+          // Quantità e Prezzo
+          doc.text(`Quantità: ${quantita} x ${prezzo.toFixed(2)}€ = ${totaleRiga.toFixed(2)}€`, 10, y);
+          y += 12;
 
-		  // Se va oltre il fondo pagina, nuova pagina
-		  if (y > 270) {
-			doc.addPage();
-			y = 20;
-		  }
-		}
-	  });
+          // Se va oltre il fondo pagina, nuova pagina
+          if (y > 270) {
+            doc.addPage();
+            y = 20;
+          }
+        }
+      });
 
-	  // Totale finale
-	  y += 10;
-	  doc.setFont(undefined, 'bold');
-	  const totaleText = document.getElementById('total').innerText;
-	  doc.text(totaleText, 10, y);
+      // Totale finale
+      y += 10;
+      doc.setFont(undefined, 'bold');
+      const totaleText = document.getElementById('total').innerText;
+      doc.text(totaleText, 10, y);
 
-	  doc.save(`preventivo_${getDataOra()}.pdf`);
-	}
-
-
+      doc.save(`preventivo_${getDataOra()}.pdf`);
+    }
 
     function resetForm() {
       voci.forEach((voce, index) => {
